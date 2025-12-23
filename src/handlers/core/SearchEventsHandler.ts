@@ -7,6 +7,7 @@ import { convertToRFC3339 } from "../utils/datetime.js";
 import { buildListFieldMask } from "../../utils/field-mask-builder.js";
 import { createStructuredResponse, convertEventsToStructured } from "../../utils/response-builder.js";
 import { SearchEventsResponse, StructuredEvent, convertGoogleEventToStructured } from "../../types/structured-responses.js";
+import { loadPrivacyConfig } from "../../config/index.js";
 
 // Extended event type to include calendar ID and account ID for tracking source
 interface ExtendedEvent extends calendar_v3.Schema$Event {
@@ -28,12 +29,16 @@ interface SearchEventsArgs {
 
 export class SearchEventsHandler extends BaseToolHandler {
     async runTool(args: any, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
+        // Load privacy config for email masking
+        const privacyConfig = await loadPrivacyConfig();
+
         const validArgs = args as SearchEventsInput;
 
         // Normalize calendarId to always be an array for consistent processing
+        // Default to 'primary' if not specified (will be resolved to defaultCalendarId via CalendarRegistry)
         const calendarNamesOrIds = Array.isArray(validArgs.calendarId)
             ? validArgs.calendarId
-            : [validArgs.calendarId];
+            : [validArgs.calendarId || 'primary'];
 
         // Get clients for specified accounts (supports single or multiple)
         const selectedAccounts = this.getClientsForAccounts(args.account, accounts);
@@ -114,9 +119,9 @@ export class SearchEventsHandler extends BaseToolHandler {
             return aTime.localeCompare(bTime);
         });
 
-        // Convert to structured format
+        // Convert to structured format with privacy masking
         const structuredEvents: StructuredEvent[] = allEvents.map(event =>
-            convertGoogleEventToStructured(event, event.calendarId, event.accountId)
+            convertGoogleEventToStructured(event, event.calendarId, event.accountId, privacyConfig)
         );
 
         const response: SearchEventsResponse = {

@@ -11,9 +11,10 @@ export class DeleteEventHandler extends BaseToolHandler {
 
         // Get OAuth2Client with automatic account selection for write operations
         // Also resolves calendar name to ID if a name was provided
+        // Default to 'primary' if not specified (will be resolved to defaultCalendarId via CalendarRegistry)
         const { client: oauth2Client, calendarId: resolvedCalendarId } = await this.getClientWithAutoSelection(
             args.account,
-            validArgs.calendarId,
+            validArgs.calendarId || 'primary',
             accounts,
             'write'
         );

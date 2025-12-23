@@ -5,9 +5,10 @@ import { calendar_v3 } from 'googleapis';
 import { buildSingleEventFieldMask } from "../../utils/field-mask-builder.js";
 import { createStructuredResponse } from "../../utils/response-builder.js";
 import { GetEventResponse, convertGoogleEventToStructured } from "../../types/structured-responses.js";
+import { loadPrivacyConfig } from "../../config/index.js";
 
 interface GetEventArgs {
-    calendarId: string;
+    calendarId?: string;
     eventId: string;
     fields?: string[];
     account?: string;
@@ -15,13 +16,17 @@ interface GetEventArgs {
 
 export class GetEventHandler extends BaseToolHandler {
     async runTool(args: GetEventArgs, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
+        // Load privacy config for email masking
+        const privacyConfig = await loadPrivacyConfig();
+
         const validArgs = args;
 
         // Get OAuth2Client with automatic account selection for read operations
         // Also resolves calendar name to ID if a name was provided
+        // Default to 'primary' if not specified (will be resolved to defaultCalendarId via CalendarRegistry)
         const { client: oauth2Client, accountId: selectedAccountId, calendarId: resolvedCalendarId } = await this.getClientWithAutoSelection(
             args.account,
-            validArgs.calendarId,
+            validArgs.calendarId || 'primary',
             accounts,
             'read'
         );
@@ -36,7 +41,7 @@ export class GetEventHandler extends BaseToolHandler {
             }
 
             const response: GetEventResponse = {
-                event: convertGoogleEventToStructured(event, resolvedCalendarId, selectedAccountId)
+                event: convertGoogleEventToStructured(event, resolvedCalendarId, selectedAccountId, privacyConfig)
             };
 
             return createStructuredResponse(response);

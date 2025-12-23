@@ -10,6 +10,15 @@ vi.mock('googleapis', () => ({
   }
 }));
 
+// Mock loadPrivacyConfig to return default config (no defaultCalendarId set)
+vi.mock('../../../config/index.js', () => ({
+  loadPrivacyConfig: vi.fn().mockResolvedValue({
+    version: 1,
+    emailMappings: {},
+    defaultCalendarId: undefined
+  })
+}));
+
 describe('CalendarRegistry', () => {
   let registry: CalendarRegistry;
   let workClient: OAuth2Client;

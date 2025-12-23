@@ -7,6 +7,7 @@ import { convertToRFC3339 } from "../utils/datetime.js";
 import { buildListFieldMask } from "../../utils/field-mask-builder.js";
 import { createStructuredResponse } from "../../utils/response-builder.js";
 import { ListEventsResponse, StructuredEvent, convertGoogleEventToStructured } from "../../types/structured-responses.js";
+import { loadPrivacyConfig } from "../../config/index.js";
 
 // Extended event type to include calendar ID and account ID for tracking source
 interface ExtendedEvent extends calendar_v3.Schema$Event {
@@ -15,7 +16,7 @@ interface ExtendedEvent extends calendar_v3.Schema$Event {
 }
 
 interface ListEventsArgs {
-  calendarId: string | string[];
+  calendarId?: string | string[];
   timeMin?: string;
   timeMax?: string;
   timeZone?: string;
@@ -27,15 +28,19 @@ interface ListEventsArgs {
 
 export class ListEventsHandler extends BaseToolHandler {
     async runTool(args: ListEventsArgs, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
+        // Load privacy config for email masking
+        const privacyConfig = await loadPrivacyConfig();
+
         // Get clients for specified accounts (supports single or multiple)
         const selectedAccounts = this.getClientsForAccounts(args.account, accounts);
         const partialFailures: Array<{ accountId: string; reason: string }> = [];
         const resolutionWarnings: string[] = [];
 
         // Normalize calendarId to always be an array for consistent processing
+        // Default to 'primary' if not specified (will be resolved to defaultCalendarId via CalendarRegistry)
         const calendarNamesOrIds = Array.isArray(args.calendarId)
             ? args.calendarId
-            : [args.calendarId];
+            : [args.calendarId || 'primary'];
 
         // For multi-account queries, pre-resolve calendars to their owning accounts
         // This prevents "calendar not found" errors when a calendar only exists on some accounts
@@ -121,9 +126,9 @@ export class ListEventsHandler extends BaseToolHandler {
             return aTime.localeCompare(bTime);
         });
 
-        // Convert extended events to structured format
+        // Convert extended events to structured format with privacy masking
         const structuredEvents: StructuredEvent[] = allEvents.map(event =>
-            convertGoogleEventToStructured(event, event.calendarId, event.accountId)
+            convertGoogleEventToStructured(event, event.calendarId, event.accountId, privacyConfig)
         );
         const warnings: string[] = [...resolutionWarnings];
 

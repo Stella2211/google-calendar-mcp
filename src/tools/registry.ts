@@ -177,7 +177,7 @@ export const ToolSchemas = {
           "Duplicate calendar IDs are not allowed"
         )
         .describe("Array of calendar IDs to query events from (max 50, no duplicates)")
-    ]),
+    ]).optional().describe("Calendar identifier(s) to query. Optional - if not specified, uses the default calendar from config or 'primary'."),
     timeMin: timeMinSchema,
     timeMax: timeMaxSchema,
     timeZone: timeZoneSchema,
@@ -205,7 +205,7 @@ export const ToolSchemas = {
         return val;
       }
       return val;
-    }).describe("Calendar identifier(s) to search. Accepts calendar IDs or names. Single or multiple calendars supported."),
+    }).optional().describe("Calendar identifier(s) to search. Optional - if not specified, uses the default calendar from config or 'primary'."),
     query: z.string().describe(
       "Free text search query (searches summary, description, location, attendees, etc.)"
     ),
@@ -245,7 +245,7 @@ export const ToolSchemas = {
   
   'get-event': z.object({
     account: singleAccountSchema,
-    calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
+    calendarId: z.string().optional().describe("ID of the calendar. Optional - if not specified, uses the default calendar from config or 'primary'."),
     eventId: z.string().describe("ID of the event to retrieve"),
     fields: z.array(z.enum(ALLOWED_EVENT_FIELDS)).optional().describe(
       "Optional array of additional event fields to retrieve. Available fields are strictly validated. Default fields (id, summary, start, end, status, htmlLink, location, attendees) are always included."
@@ -258,7 +258,7 @@ export const ToolSchemas = {
 
   'create-event': z.object({
     account: singleAccountSchema,
-    calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
+    calendarId: z.string().optional().describe("ID of the calendar. Optional - if not specified, uses the default calendar from config or 'primary'."),
     eventId: z.string().optional().describe("Optional custom event ID (5-1024 characters, base32hex encoding: lowercase letters a-v and digits 0-9 only). If not provided, Google Calendar will generate one."),
     summary: z.string().describe("Title of the event"),
     description: z.string().optional().describe("Description/notes for the event"),
@@ -368,7 +368,7 @@ export const ToolSchemas = {
   
   'update-event': z.object({
     account: singleAccountSchema,
-    calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
+    calendarId: z.string().optional().describe("ID of the calendar. Optional - if not specified, uses the default calendar from config or 'primary'."),
     eventId: z.string().describe("ID of the event to update"),
     summary: z.string().optional().describe("Updated title of the event"),
     description: z.string().optional().describe("Updated description/notes"),
@@ -509,7 +509,7 @@ export const ToolSchemas = {
   
   'delete-event': z.object({
     account: singleAccountSchema,
-    calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
+    calendarId: z.string().optional().describe("ID of the calendar. Optional - if not specified, uses the default calendar from config or 'primary'."),
     eventId: z.string().describe("ID of the event to delete"),
     sendUpdates: z.enum(["all", "externalOnly", "none"]).default("all").describe(
       "Whether to send cancellation notifications"
@@ -556,7 +556,7 @@ export const ToolSchemas = {
   }),
 
   'respond-to-event': z.object({
-    calendarId: z.string().describe("ID of the calendar (use 'primary' for the main calendar)"),
+    calendarId: z.string().optional().describe("ID of the calendar. Optional - if not specified, uses the default calendar from config or 'primary'."),
     eventId: z.string().describe("ID of the event to respond to"),
     account: z.string().optional().describe(
       "Account nickname to use for this operation (e.g., 'work', 'personal'). Optional when only one account is connected - will auto-select the account with appropriate permissions. Use 'list-calendars' to see available accounts."
@@ -659,8 +659,10 @@ export class ToolRegistry {
       description: "List events from one or more calendars. Supports both calendar IDs and calendar names.",
       schema: ToolSchemas['list-events'],
       handler: ListEventsHandler,
-      handlerFunction: async (args: ListEventsInput & { calendarId: string | string[] }) => {
-        let processedCalendarId: string | string[] = args.calendarId;
+      handlerFunction: async (args: ListEventsInput & { calendarId?: string | string[] }) => {
+        // Default to 'primary' if calendarId is not specified
+        // The handler will resolve 'primary' to the configured defaultCalendarId via CalendarRegistry
+        let processedCalendarId: string | string[] = args.calendarId ?? 'primary';
 
         // If it's already an array (native array format), keep as-is (already validated by schema)
         if (Array.isArray(args.calendarId)) {

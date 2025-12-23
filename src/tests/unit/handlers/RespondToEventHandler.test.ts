@@ -20,6 +20,20 @@ vi.mock('googleapis', () => ({
   calendar_v3: {}
 }));
 
+// Mock config module
+vi.mock('../../../config/index.js', () => ({
+  loadPrivacyConfig: vi.fn().mockResolvedValue({
+    version: 1,
+    emailMappings: {},
+    defaultCalendarId: undefined
+  }),
+  applyEmailPrivacy: vi.fn((email: string | null | undefined, displayName: string | null | undefined) => ({
+    email: email || '',
+    displayName: displayName || undefined
+  })),
+  maskEmail: vi.fn((email: string) => email)
+}));
+
 describe('RespondToEventHandler', () => {
   let handler: RespondToEventHandler;
   const mockOAuth2Client = {

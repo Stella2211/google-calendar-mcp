@@ -9,6 +9,7 @@ import { ConflictDetectionService } from "../../services/conflict-detection/inde
 import { CONFLICT_DETECTION_CONFIG } from "../../services/conflict-detection/config.js";
 import { createStructuredResponse, convertConflictsToStructured, createWarningsArray } from "../../utils/response-builder.js";
 import { CreateEventResponse, convertGoogleEventToStructured } from "../../types/structured-responses.js";
+import { loadPrivacyConfig } from "../../config/index.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -19,13 +20,17 @@ export class CreateEventHandler extends BaseToolHandler {
     }
     
     async runTool(args: any, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
+        // Load privacy config for email masking
+        const privacyConfig = await loadPrivacyConfig();
+
         const validArgs = args as CreateEventInput;
 
         // Get OAuth2Client with automatic account selection for write operations
         // Also resolves calendar name to ID if a name was provided
+        // Default to 'primary' if not specified (will be resolved to defaultCalendarId via CalendarRegistry)
         const { client: oauth2Client, accountId: selectedAccountId, calendarId: resolvedCalendarId } = await this.getClientWithAutoSelection(
             args.account,
-            validArgs.calendarId,
+            validArgs.calendarId || 'primary',
             accounts,
             'write'
         );
@@ -75,7 +80,7 @@ export class CreateEventHandler extends BaseToolHandler {
         // Generate structured response with conflict warnings
         const structuredConflicts = convertConflictsToStructured(conflicts);
         const response: CreateEventResponse = {
-            event: convertGoogleEventToStructured(event, resolvedCalendarId, selectedAccountId),
+            event: convertGoogleEventToStructured(event, resolvedCalendarId, selectedAccountId, privacyConfig),
             conflicts: structuredConflicts.conflicts,
             duplicates: structuredConflicts.duplicates,
             warnings: createWarningsArray(conflicts)
@@ -97,7 +102,8 @@ export class CreateEventHandler extends BaseToolHandler {
             }
             
             // Use provided timezone or calendar's default timezone
-            const timezone = args.timeZone || await this.getCalendarTimezone(client, args.calendarId);
+            // Note: calendarId is guaranteed to be defined here (resolved in runTool)
+            const timezone = args.timeZone || await this.getCalendarTimezone(client, args.calendarId!);
             
             const requestBody: calendar_v3.Schema$Event = {
                 summary: args.summary,

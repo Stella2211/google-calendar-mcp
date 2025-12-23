@@ -135,7 +135,8 @@ describe('ManageAccountsHandler', () => {
       const response = JSON.parse(result.content[0].text as string);
       const account = response.accounts[0];
 
-      expect(account.email).toBe('test@example.com');
+      // Email is masked by privacy config when not in mappings (t***@example.com)
+      expect(account.email).toBe('t***@example.com');
       expect(account.calendar_count).toBe(2);
       expect(account.primary_calendar).toEqual({
         id: 'test@example.com',

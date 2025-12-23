@@ -5,9 +5,10 @@ import { calendar_v3 } from 'googleapis';
 import { createStructuredResponse } from "../../utils/response-builder.js";
 import { RespondToEventResponse, convertGoogleEventToStructured } from "../../types/structured-responses.js";
 import { RecurringEventHelpers, RecurringEventError, RECURRING_EVENT_ERRORS } from './RecurringEventHelpers.js';
+import { loadPrivacyConfig } from "../../config/index.js";
 
 export type RespondToEventInput = {
-    calendarId: string;
+    calendarId?: string;
     eventId: string;
     response: "accepted" | "declined" | "tentative" | "needsAction";
     comment?: string;
@@ -19,13 +20,17 @@ export type RespondToEventInput = {
 
 export class RespondToEventHandler extends BaseToolHandler {
     async runTool(args: RespondToEventInput, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
+        // Load privacy config for email masking
+        const privacyConfig = await loadPrivacyConfig();
+
         const validArgs = args;
 
         // Get OAuth2Client with automatic account selection for write operations
         // Also resolves calendar name to ID if a name was provided
+        // Default to 'primary' if not specified (will be resolved to defaultCalendarId via CalendarRegistry)
         const { client: oauth2Client, accountId: selectedAccountId, calendarId: resolvedCalendarId } = await this.getClientWithAutoSelection(
             args.account,
-            validArgs.calendarId,
+            validArgs.calendarId || 'primary',
             accounts,
             'write'
         );
@@ -130,7 +135,7 @@ export class RespondToEventHandler extends BaseToolHandler {
             }
 
             const response: RespondToEventResponse = {
-                event: convertGoogleEventToStructured(updateResponse.data, resolvedCalendarId, selectedAccountId),
+                event: convertGoogleEventToStructured(updateResponse.data, resolvedCalendarId, selectedAccountId, privacyConfig),
                 responseStatus: validArgs.response,
                 sendUpdates: actualSendUpdates,
                 message: message

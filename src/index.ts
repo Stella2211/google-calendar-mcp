@@ -96,7 +96,7 @@ function showHelp(): void {
 Google Calendar MCP Server v${VERSION}
 
 Usage:
-  npx @cocal/google-calendar-mcp [command] [options]
+  npx github:Stella2211/google-calendar-mcp [command] [options]
 
 Commands:
   auth [account-id]  Run the authentication flow
@@ -106,11 +106,11 @@ Commands:
   help               Show this help message
 
 Examples:
-  npx @cocal/google-calendar-mcp auth              # Authenticate default account
-  npx @cocal/google-calendar-mcp auth work         # Authenticate "work" account
-  npx @cocal/google-calendar-mcp auth personal     # Authenticate "personal" account
-  npx @cocal/google-calendar-mcp start
-  npx @cocal/google-calendar-mcp
+  npx github:Stella2211/google-calendar-mcp auth              # Authenticate default account
+  npx github:Stella2211/google-calendar-mcp auth work         # Authenticate "work" account
+  npx github:Stella2211/google-calendar-mcp auth personal     # Authenticate "personal" account
+  npx github:Stella2211/google-calendar-mcp start
+  npx github:Stella2211/google-calendar-mcp
 
 Environment Variables:
   GOOGLE_OAUTH_CREDENTIALS    Path to OAuth credentials file

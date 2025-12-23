@@ -216,7 +216,7 @@ MCP tools return errors as successful responses with error content, not as throw
 
 ## Deployment
 
-- **npx**: `npx @cocal/google-calendar-mcp` (requires `GOOGLE_OAUTH_CREDENTIALS` env var)
+- **npx**: `npx github:Stella2211/google-calendar-mcp` (requires `GOOGLE_OAUTH_CREDENTIALS` env var)
 - **Docker**: See `docs/docker.md` for Docker deployment with stdio and HTTP modes
 - **Claude Desktop Config**: See README.md for local stdio configuration
 
@@ -232,3 +232,36 @@ MCP tools return errors as successful responses with error content, not as throw
 - **stdio**: For Claude Desktop only, local machine
 - **HTTP**: For testing, development, debugging (local only)
 
+## Privacy Configuration
+
+Privacy settings allow masking email addresses in AI responses and setting a default calendar.
+
+**Config File Location:**
+- macOS/Linux: `~/.config/stella2211-google-calendar-mcp/config.json`
+- Windows: `%USERPROFILE%\.config\stella2211-google-calendar-mcp\config.json`
+
+**Example Configuration:**
+```json
+{
+  "version": 1,
+  "emailMappings": {
+    "john@example.com": "John Smith",
+    "jane@company.org": "Jane Doe"
+  },
+  "defaultCalendarId": "work@gmail.com"
+}
+```
+
+**Features:**
+- **Email Masking**: Emails not in `emailMappings` are masked as `j***@example.com`
+- **Known Contacts**: Emails in `emailMappings` show with their configured display name
+- **Default Calendar**: When set, `"primary"` is replaced with the configured calendar ID
+
+**Environment Variable Override:**
+- `PRIVACY_CONFIG_PATH`: Custom path to the config file
+
+**Implementation Details:**
+- Config loader: `src/config/PrivacyConfigLoader.ts` (singleton with 1-minute cache)
+- Email masking: `src/config/EmailMasker.ts`
+- Applied in: `convertGoogleEventToStructured()` and handler `runTool()` methods
+- Default calendar substitution: `CalendarRegistry.resolveCalendarNameToId()`

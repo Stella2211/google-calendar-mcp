@@ -1,6 +1,7 @@
 import { OAuth2Client } from 'google-auth-library';
 import { calendar_v3, google } from 'googleapis';
 import { getCredentialsProjectId } from '../auth/utils.js';
+import { loadPrivacyConfig } from '../config/index.js';
 
 /**
  * Represents a calendar accessible from a specific account
@@ -276,9 +277,19 @@ export class CalendarRegistry {
     accounts: Map<string, OAuth2Client>,
     operationType: 'read' | 'write' = 'read'
   ): Promise<{ calendarId: string; accountId: string; accessRole: string } | null> {
+    // Load privacy config to check for default calendar override
+    const privacyConfig = await loadPrivacyConfig();
+
+    // Apply default calendar substitution if configured
+    // This replaces "primary" with the user's configured default calendar
+    let resolvedNameOrId = nameOrId;
+    if (nameOrId === 'primary' && privacyConfig.defaultCalendarId) {
+      resolvedNameOrId = privacyConfig.defaultCalendarId;
+    }
+
     // Special case: "primary" is an alias for each account's primary calendar
     // When only one account exists, use it directly without registry lookup
-    if (nameOrId === 'primary') {
+    if (resolvedNameOrId === 'primary') {
       if (accounts.size === 1) {
         const [accountId] = accounts.keys();
         // Primary calendar always has owner access for the account owner
@@ -286,9 +297,9 @@ export class CalendarRegistry {
       }
       // Multiple accounts: try to find best match via registry
       // Each account's primary calendar ID is typically the account email
-      const result = await this.getAccountForCalendar(nameOrId, accounts, operationType);
+      const result = await this.getAccountForCalendar(resolvedNameOrId, accounts, operationType);
       if (result) {
-        return { calendarId: nameOrId, ...result };
+        return { calendarId: resolvedNameOrId, ...result };
       }
       // If registry lookup fails with multiple accounts, use first account as fallback
       // This maintains backwards compatibility while still working
@@ -297,17 +308,17 @@ export class CalendarRegistry {
     }
 
     // If it looks like an ID (contains @), use getAccountForCalendar
-    if (nameOrId.includes('@')) {
-      const result = await this.getAccountForCalendar(nameOrId, accounts, operationType);
+    if (resolvedNameOrId.includes('@')) {
+      const result = await this.getAccountForCalendar(resolvedNameOrId, accounts, operationType);
       if (result) {
-        return { calendarId: nameOrId, ...result };
+        return { calendarId: resolvedNameOrId, ...result };
       }
       return null;
     }
 
     // It's a name - search across all calendars
     const unified = await this.getUnifiedCalendars(accounts);
-    const lowerName = nameOrId.toLowerCase();
+    const lowerName = resolvedNameOrId.toLowerCase();
 
     // Search for matching calendar by name
     // Priority: exact summaryOverride > case-insensitive summaryOverride > exact summary > case-insensitive summary
@@ -315,7 +326,7 @@ export class CalendarRegistry {
 
     // Priority 1: Exact match on any account's summaryOverride
     match = unified.find(cal =>
-      cal.accounts.some(a => a.summaryOverride === nameOrId)
+      cal.accounts.some(a => a.summaryOverride === resolvedNameOrId)
     );
 
     // Priority 2: Case-insensitive match on summaryOverride
@@ -327,7 +338,7 @@ export class CalendarRegistry {
 
     // Priority 3: Exact match on displayName (primary account's name)
     if (!match) {
-      match = unified.find(cal => cal.displayName === nameOrId);
+      match = unified.find(cal => cal.displayName === resolvedNameOrId);
     }
 
     // Priority 4: Case-insensitive match on displayName
@@ -338,7 +349,7 @@ export class CalendarRegistry {
     // Priority 5: Exact match on any account's summary
     if (!match) {
       match = unified.find(cal =>
-        cal.accounts.some(a => a.summary === nameOrId)
+        cal.accounts.some(a => a.summary === resolvedNameOrId)
       );
     }
 

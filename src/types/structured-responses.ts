@@ -1,4 +1,5 @@
 import { calendar_v3 } from 'googleapis';
+import { PrivacyConfig, applyEmailPrivacy } from '../config/index.js';
 
 /**
  * Represents a date/time value in Google Calendar API format
@@ -398,13 +399,26 @@ export interface RemoveAccountResponse {
  * @param event - The Google Calendar API event object
  * @param calendarId - Optional calendar ID to include in the response
  * @param accountId - Optional account ID to include in the response (for multi-account queries)
+ * @param privacyConfig - Optional privacy config for email masking
  * @returns Structured event representation
  */
 export function convertGoogleEventToStructured(
   event: calendar_v3.Schema$Event,
   calendarId?: string,
-  accountId?: string
+  accountId?: string,
+  privacyConfig?: Pick<PrivacyConfig, 'emailMappings'>
 ): StructuredEvent {
+  // Apply privacy masking to creator, organizer, and attendees
+  const config = privacyConfig || { emailMappings: {} };
+
+  const creatorPrivacy = event.creator?.email
+    ? applyEmailPrivacy(event.creator.email, event.creator.displayName, config)
+    : null;
+
+  const organizerPrivacy = event.organizer?.email
+    ? applyEmailPrivacy(event.organizer.email, event.organizer.displayName, config)
+    : null;
+
   return {
     id: event.id || '',
     summary: event.summary ?? undefined,
@@ -426,26 +440,29 @@ export function convertGoogleEventToStructured(
     updated: event.updated ?? undefined,
     colorId: event.colorId ?? undefined,
     creator: event.creator ? {
-      email: event.creator.email ?? '',
-      displayName: event.creator.displayName ?? undefined,
+      email: creatorPrivacy?.email ?? '',
+      displayName: creatorPrivacy?.displayName ?? event.creator.displayName ?? undefined,
       self: event.creator.self ?? undefined,
     } : undefined,
     organizer: event.organizer ? {
-      email: event.organizer.email ?? '',
-      displayName: event.organizer.displayName ?? undefined,
+      email: organizerPrivacy?.email ?? '',
+      displayName: organizerPrivacy?.displayName ?? event.organizer.displayName ?? undefined,
       self: event.organizer.self ?? undefined,
     } : undefined,
-    attendees: event.attendees?.map(a => ({
-      email: a.email || '',
-      displayName: a.displayName ?? undefined,
-      responseStatus: a.responseStatus as any,
-      optional: a.optional ?? undefined,
-      organizer: a.organizer ?? undefined,
-      self: a.self ?? undefined,
-      resource: a.resource ?? undefined,
-      comment: a.comment ?? undefined,
-      additionalGuests: a.additionalGuests ?? undefined,
-    })),
+    attendees: event.attendees?.map(a => {
+      const attendeePrivacy = applyEmailPrivacy(a.email, a.displayName, config);
+      return {
+        email: attendeePrivacy.email,
+        displayName: attendeePrivacy.displayName ?? a.displayName ?? undefined,
+        responseStatus: a.responseStatus as any,
+        optional: a.optional ?? undefined,
+        organizer: a.organizer ?? undefined,
+        self: a.self ?? undefined,
+        resource: a.resource ?? undefined,
+        comment: a.comment ?? undefined,
+        additionalGuests: a.additionalGuests ?? undefined,
+      };
+    }),
     recurrence: event.recurrence ?? undefined,
     recurringEventId: event.recurringEventId ?? undefined,
     originalStartTime: event.originalStartTime ? {

@@ -11,6 +11,7 @@ import {
   AccountInfo,
   RemoveAccountResponse
 } from "../../types/structured-responses.js";
+import { loadPrivacyConfig, applyEmailPrivacy } from "../../config/index.js";
 
 export type ManageAccountsAction = 'list' | 'add' | 'remove';
 
@@ -137,6 +138,9 @@ export class ManageAccountsHandler {
 
   private async getAccountInfo(accountId: string, client: OAuth2Client): Promise<AccountInfo> {
     try {
+      // Load privacy config for email masking
+      const privacyConfig = await loadPrivacyConfig();
+
       const calendar = google.calendar({ version: 'v3', auth: client });
 
       const calendarList = await calendar.calendarList.list();
@@ -147,12 +151,14 @@ export class ManageAccountsHandler {
       const expiryDate = credentials.expiry_date;
       const isExpired = expiryDate ? Date.now() > expiryDate : false;
 
-      const email = primaryCalendar?.id || 'unknown';
+      // Apply email privacy masking
+      const rawEmail = primaryCalendar?.id || 'unknown';
+      const emailPrivacy = applyEmailPrivacy(rawEmail, null, privacyConfig);
 
       return {
         account_id: accountId,
         status: isExpired ? 'expired' : 'active',
-        email,
+        email: emailPrivacy.email,
         calendar_count: calendars.length,
         primary_calendar: primaryCalendar ? {
           id: primaryCalendar.id || 'primary',

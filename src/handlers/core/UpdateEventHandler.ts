@@ -6,15 +6,16 @@ import { calendar_v3 } from 'googleapis';
 import { RecurringEventHelpers, RecurringEventError, RECURRING_EVENT_ERRORS } from './RecurringEventHelpers.js';
 import { ConflictDetectionService } from "../../services/conflict-detection/index.js";
 import { createTimeObject } from "../utils/datetime.js";
-import { 
-    createStructuredResponse, 
+import {
+    createStructuredResponse,
     convertConflictsToStructured,
     createWarningsArray
 } from "../../utils/response-builder.js";
-import { 
+import {
     UpdateEventResponse,
-    convertGoogleEventToStructured 
+    convertGoogleEventToStructured
 } from "../../types/structured-responses.js";
+import { loadPrivacyConfig } from "../../config/index.js";
 
 export class UpdateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -25,13 +26,17 @@ export class UpdateEventHandler extends BaseToolHandler {
     }
     
     async runTool(args: any, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
+        // Load privacy config for email masking
+        const privacyConfig = await loadPrivacyConfig();
+
         const validArgs = args as UpdateEventInput;
 
         // Get OAuth2Client with automatic account selection for write operations
         // Also resolves calendar name to ID if a name was provided
+        // Default to 'primary' if not specified (will be resolved to defaultCalendarId via CalendarRegistry)
         const { client: oauth2Client, accountId: selectedAccountId, calendarId: resolvedCalendarId } = await this.getClientWithAutoSelection(
             args.account,
-            validArgs.calendarId,
+            validArgs.calendarId || 'primary',
             accounts,
             'write'
         );
@@ -81,7 +86,7 @@ export class UpdateEventHandler extends BaseToolHandler {
 
         // Create structured response
         const response: UpdateEventResponse = {
-            event: convertGoogleEventToStructured(event, resolvedCalendarId, selectedAccountId)
+            event: convertGoogleEventToStructured(event, resolvedCalendarId, selectedAccountId, privacyConfig)
         };
         
         // Add conflict information if present
@@ -105,10 +110,11 @@ export class UpdateEventHandler extends BaseToolHandler {
             const helpers = new RecurringEventHelpers(calendar);
             
             // Get calendar's default timezone if not provided
-            const defaultTimeZone = await this.getCalendarTimezone(client, args.calendarId);
-            
+            // Note: calendarId is guaranteed to be defined here (resolved in runTool)
+            const defaultTimeZone = await this.getCalendarTimezone(client, args.calendarId!);
+
             // Detect event type and validate scope usage
-            const eventType = await helpers.detectEventType(args.eventId, args.calendarId);
+            const eventType = await helpers.detectEventType(args.eventId, args.calendarId!);
             
             if (args.modificationScope && args.modificationScope !== 'all' && eventType !== 'recurring') {
                 throw new RecurringEventError(

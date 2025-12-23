@@ -12,6 +12,7 @@ A Model Context Protocol (MCP) server that provides Google Calendar integration 
 - **Free/Busy Queries**: Check availability across calendars
 - **Smart Scheduling**: Natural language understanding for dates and times
 - **Intelligent Import**: Add calendar events from images, PDFs, or web links
+- **Privacy Protection**: Email masking for attendees/organizers with configurable known contacts
 
 ## Quick Start
 
@@ -51,7 +52,7 @@ Add to your Claude Desktop configuration:
   "mcpServers": {
     "google-calendar": {
       "command": "npx",
-      "args": ["@cocal/google-calendar-mcp"],
+      "args": ["github:Stella2211/google-calendar-mcp"],
       "env": {
         "GOOGLE_OAUTH_CREDENTIALS": "/path/to/your/gcp-oauth.keys.json"
       }
@@ -98,7 +99,7 @@ If you're in test mode (default), tokens expire after 7 days. If you are using a
 **For npx users:**
 ```bash
 export GOOGLE_OAUTH_CREDENTIALS="/path/to/your/gcp-oauth.keys.json"
-npx @cocal/google-calendar-mcp auth
+npx github:Stella2211/google-calendar-mcp auth
 ```
 
 **For local installation:**
@@ -204,6 +205,30 @@ Along with the normal capabilities you would expect for a calendar integration y
 **Environment Variables:**
 - `GOOGLE_OAUTH_CREDENTIALS` - Path to OAuth credentials file
 - `GOOGLE_CALENDAR_MCP_TOKEN_PATH` - Custom token storage location (optional)
+- `PRIVACY_CONFIG_PATH` - Custom path to privacy config file (optional)
+
+### Privacy Configuration
+
+To protect privacy, email addresses in AI responses are masked by default (e.g., `j***@example.com`). You can configure known contacts and a default calendar.
+
+**Config file location:**
+- macOS/Linux: `~/.config/stella2211-google-calendar-mcp/config.json`
+- Windows: `%USERPROFILE%\.config\stella2211-google-calendar-mcp\config.json`
+
+**Example configuration:**
+```json
+{
+  "version": 1,
+  "emailMappings": {
+    "john@example.com": "John Smith",
+    "jane@company.org": "Jane Doe"
+  },
+  "defaultCalendarId": "work@gmail.com"
+}
+```
+
+- **emailMappings**: Known contacts are shown with their display name (email not masked)
+- **defaultCalendarId**: Replaces `"primary"` with the specified calendar ID
 
 ## Security
 

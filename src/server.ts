@@ -79,7 +79,7 @@ export class GoogleCalendarMcpServer {
         // User can authenticate via the 'add-account' tool
         process.stderr.write(`⚠️  No authenticated accounts found.\n`);
         process.stderr.write(`Use the 'add-account' tool to authenticate a Google account, or run:\n`);
-        process.stderr.write(`  npx @cocal/google-calendar-mcp auth\n\n`);
+        process.stderr.write(`  npx github:Stella2211/google-calendar-mcp auth\n\n`);
         // Don't exit - allow server to start so add-account tool is available
       } else {
         process.stderr.write(`Valid ${accountMode} user tokens found.\n`);
