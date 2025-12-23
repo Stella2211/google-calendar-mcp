@@ -402,8 +402,13 @@ describe('ListEventsHandler - Multi-account merging', () => {
     const parsed = JSON.parse(result.content[0].text);
     expect(parsed.accounts).toEqual(['work', 'personal']);
     expect(parsed.events).toHaveLength(2);
-    expect(parsed.events[0].accountId).toBe('personal');
-    expect(parsed.events[1].accountId).toBe('work');
+    // Events are sorted by start time: Dentist (08:00) then Work Planning (09:00)
+    // Lightweight response includes id, summary, start, end, colorId, location, isAllDay
+    expect(parsed.events[0].id).toBe('personal-1');
+    expect(parsed.events[0].summary).toBe('Dentist');
+    expect(parsed.events[0].isAllDay).toBe(false);
+    expect(parsed.events[1].id).toBe('work-1');
+    expect(parsed.events[1].summary).toBe('Work Planning');
     expect(parsed.note).toContain('merged events');
   });
 

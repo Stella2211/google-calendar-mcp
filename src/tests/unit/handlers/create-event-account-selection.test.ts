@@ -60,8 +60,10 @@ describe('CreateEventHandler - multi-account selection', () => {
     const result = await handler.runTool(baseArgs, accounts);
     const response = JSON.parse((result.content as any)[0].text);
 
+    // Lightweight response includes id, summary, start, end, colorId, location, isAllDay
     expect(response.event).toBeDefined();
-    expect(response.event.accountId).toBe('work');
+    expect(response.event.id).toBe('evt-1');
+    expect(response.event.summary).toBe(baseArgs.summary);
   });
 
   it('uses explicitly provided account even when registry would choose differently', async () => {
@@ -82,7 +84,9 @@ describe('CreateEventHandler - multi-account selection', () => {
     const result = await handler.runTool({ ...baseArgs, account: 'personal' }, accounts);
     const response = JSON.parse((result.content as any)[0].text);
 
-    expect(response.event.accountId).toBe('personal');
+    // Lightweight response includes id, summary, start, end, colorId, location, isAllDay
+    expect(response.event.id).toBe('evt-2');
+    expect(response.event.summary).toBe(baseArgs.summary);
   });
 
   it('errors when no account has write access and none is specified', async () => {

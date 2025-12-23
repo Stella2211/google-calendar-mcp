@@ -136,6 +136,49 @@ export interface StructuredEvent {
 }
 
 /**
+ * Lightweight event representation for list-events (minimal data for overview)
+ */
+export interface ListEventItem {
+  id: string;
+  summary?: string;
+  start: DateTime;
+  end: DateTime;
+  colorId?: string;
+  location?: string;
+  isAllDay: boolean;
+}
+
+/**
+ * Converts a Google Calendar API event to lightweight list format
+ * @param event - The Google Calendar API event object
+ * @returns Lightweight event representation
+ */
+export function convertGoogleEventToListItem(
+  event: calendar_v3.Schema$Event
+): ListEventItem {
+  // Determine if it's an all-day event (has date instead of dateTime)
+  const isAllDay = !!(event.start?.date && !event.start?.dateTime);
+
+  return {
+    id: event.id || '',
+    summary: event.summary ?? undefined,
+    start: {
+      dateTime: event.start?.dateTime ?? undefined,
+      date: event.start?.date ?? undefined,
+      timeZone: event.start?.timeZone ?? undefined,
+    },
+    end: {
+      dateTime: event.end?.dateTime ?? undefined,
+      date: event.end?.date ?? undefined,
+      timeZone: event.end?.timeZone ?? undefined,
+    },
+    colorId: event.colorId ?? undefined,
+    location: event.location ?? undefined,
+    isAllDay,
+  };
+}
+
+/**
  * Information about a scheduling conflict with another event
  */
 export interface ConflictInfo {
@@ -172,10 +215,10 @@ export interface DuplicateInfo {
 }
 
 /**
- * Response format for listing calendar events
+ * Response format for listing calendar events (lightweight)
  */
 export interface ListEventsResponse {
-  events: StructuredEvent[];
+  events: ListEventItem[];
   totalCount: number;
   calendars?: string[];
   accounts?: string[];
@@ -212,10 +255,10 @@ export interface GetEventResponse {
 }
 
 /**
- * Response format for creating a new event
+ * Response format for creating a new event (lightweight)
  */
 export interface CreateEventResponse {
-  event: StructuredEvent;
+  event: ListEventItem;
   conflicts?: ConflictInfo[];
   duplicates?: DuplicateInfo[];
   warnings?: string[];

@@ -194,6 +194,26 @@ npm run dev test:integration:direct
 
 The codebase uses a structured response format for tool outputs. Recent commits (see git status) show migration to structured outputs using types from `src/types/structured-responses.ts`. When updating handlers, ensure responses conform to these structured formats.
 
+### Response Formats
+
+Two response formats exist for events:
+
+**Lightweight Format** (`ListEventItem`): Used by `list-events` and `create-event`
+- Fields: `id`, `summary`, `start`, `end`, `colorId`, `location`, `isAllDay`
+- Optimized for overview displays and reduced token usage
+- Use `convertGoogleEventToListItem()` from `structured-responses.ts`
+
+**Full Format** (`StructuredEvent`): Used by `get-event`, `update-event`, `search-events`, `respond-to-event`
+- Includes all event details: attendees, description, recurrence, conferenceData, etc.
+- Use `convertGoogleEventToStructured()` with privacy config for email masking
+
+### Optional calendarId Parameter
+
+The `calendarId` parameter is optional for most tools. When omitted:
+1. Defaults to `'primary'`
+2. `CalendarRegistry.resolveCalendarNameToId()` checks privacy config for `defaultCalendarId`
+3. If configured, substitutes the default calendar ID
+
 ### MCP Structure
 
 MCP tools return errors as successful responses with error content, not as thrown exceptions. Integration tests must validate result.content[0].text for error messages, while unit tests of handlers directly can still catch thrown McpError exceptions before the MCP transport layer wraps them.

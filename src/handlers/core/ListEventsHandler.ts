@@ -6,8 +6,7 @@ import { BatchRequestHandler } from "./BatchRequestHandler.js";
 import { convertToRFC3339 } from "../utils/datetime.js";
 import { buildListFieldMask } from "../../utils/field-mask-builder.js";
 import { createStructuredResponse } from "../../utils/response-builder.js";
-import { ListEventsResponse, StructuredEvent, convertGoogleEventToStructured } from "../../types/structured-responses.js";
-import { loadPrivacyConfig } from "../../config/index.js";
+import { ListEventsResponse, ListEventItem, convertGoogleEventToListItem } from "../../types/structured-responses.js";
 
 // Extended event type to include calendar ID and account ID for tracking source
 interface ExtendedEvent extends calendar_v3.Schema$Event {
@@ -28,9 +27,6 @@ interface ListEventsArgs {
 
 export class ListEventsHandler extends BaseToolHandler {
     async runTool(args: ListEventsArgs, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
-        // Load privacy config for email masking
-        const privacyConfig = await loadPrivacyConfig();
-
         // Get clients for specified accounts (supports single or multiple)
         const selectedAccounts = this.getClientsForAccounts(args.account, accounts);
         const partialFailures: Array<{ accountId: string; reason: string }> = [];
@@ -126,9 +122,9 @@ export class ListEventsHandler extends BaseToolHandler {
             return aTime.localeCompare(bTime);
         });
 
-        // Convert extended events to structured format with privacy masking
-        const structuredEvents: StructuredEvent[] = allEvents.map(event =>
-            convertGoogleEventToStructured(event, event.calendarId, event.accountId, privacyConfig)
+        // Convert events to lightweight list format
+        const listEvents: ListEventItem[] = allEvents.map(event =>
+            convertGoogleEventToListItem(event)
         );
         const warnings: string[] = [...resolutionWarnings];
 
@@ -151,7 +147,7 @@ export class ListEventsHandler extends BaseToolHandler {
         }
 
         const response: ListEventsResponse = {
-            events: structuredEvents,
+            events: listEvents,
             totalCount: allEvents.length,
             calendars: allQueriedCalendarIds.length > 1 ? allQueriedCalendarIds : undefined,
             ...(partialFailures.length > 0 && { partialFailures }),

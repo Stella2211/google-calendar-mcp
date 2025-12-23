@@ -177,10 +177,10 @@ Along with the normal capabilities you would expect for a calendar integration y
 | Tool | Description |
 |------|-------------|
 | `list-calendars` | List all available calendars |
-| `list-events` | List events with date filtering |
-| `get-event` | Get details of a specific event by ID |
+| `list-events` | List events with date filtering (lightweight response) |
+| `get-event` | Get full details of a specific event by ID |
 | `search-events` | Search events by text query |
-| `create-event` | Create new calendar events |
+| `create-event` | Create new calendar events (lightweight response) |
 | `update-event` | Update existing events |
 | `delete-event` | Delete events |
 | `respond-to-event` | Respond to event invitations (Accept, Decline, Maybe, No Response) |
@@ -188,6 +188,8 @@ Along with the normal capabilities you would expect for a calendar integration y
 | `get-current-time` | Get current date and time in calendar's timezone |
 | `list-colors` | List available event colors |
 | `manage-accounts` | Add, list, or remove connected Google accounts |
+
+**Note:** The `calendarId` parameter is optional for most tools. When omitted, the configured `defaultCalendarId` is used (or Google's "primary" calendar if not configured).
 
 ## Documentation
 

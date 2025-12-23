@@ -8,8 +8,7 @@ import { validateEventId } from "../../utils/event-id-validator.js";
 import { ConflictDetectionService } from "../../services/conflict-detection/index.js";
 import { CONFLICT_DETECTION_CONFIG } from "../../services/conflict-detection/config.js";
 import { createStructuredResponse, convertConflictsToStructured, createWarningsArray } from "../../utils/response-builder.js";
-import { CreateEventResponse, convertGoogleEventToStructured } from "../../types/structured-responses.js";
-import { loadPrivacyConfig } from "../../config/index.js";
+import { CreateEventResponse, convertGoogleEventToListItem } from "../../types/structured-responses.js";
 
 export class CreateEventHandler extends BaseToolHandler {
     private conflictDetectionService: ConflictDetectionService;
@@ -20,9 +19,6 @@ export class CreateEventHandler extends BaseToolHandler {
     }
     
     async runTool(args: any, accounts: Map<string, OAuth2Client>): Promise<CallToolResult> {
-        // Load privacy config for email masking
-        const privacyConfig = await loadPrivacyConfig();
-
         const validArgs = args as CreateEventInput;
 
         // Get OAuth2Client with automatic account selection for write operations
@@ -77,10 +73,10 @@ export class CreateEventHandler extends BaseToolHandler {
         const argsWithResolvedCalendar = { ...validArgs, calendarId: resolvedCalendarId };
         const event = await this.createEvent(oauth2Client, argsWithResolvedCalendar);
 
-        // Generate structured response with conflict warnings
+        // Generate lightweight response with conflict warnings
         const structuredConflicts = convertConflictsToStructured(conflicts);
         const response: CreateEventResponse = {
-            event: convertGoogleEventToStructured(event, resolvedCalendarId, selectedAccountId, privacyConfig),
+            event: convertGoogleEventToListItem(event),
             conflicts: structuredConflicts.conflicts,
             duplicates: structuredConflicts.duplicates,
             warnings: createWarningsArray(conflicts)
